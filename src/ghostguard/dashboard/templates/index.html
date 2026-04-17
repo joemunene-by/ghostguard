@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostGuard Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0a14;
+      --bg-secondary: #12121f;
+      --bg-card: #1a1a2e;
+      --border: #2a2a3e;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --accent-green: #00b894;
+      --accent-red: #e17055;
+      --accent-yellow: #fdcb6e;
+      --accent-blue: #74b9ff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .header .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header .logo span { color: var(--accent-green); }
+
+    .header .meta {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .header .meta .value { color: var(--text-primary); font-weight: 600; }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.disconnected { background: var(--accent-red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ---- Stats Cards ---- */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+    }
+
+    .stat-card .label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 0.3rem;
+    }
+
+    .stat-card.allow .number { color: var(--accent-green); }
+    .stat-card.deny .number { color: var(--accent-red); }
+    .stat-card.sandbox .number { color: var(--accent-yellow); }
+    .stat-card.total .number { color: var(--accent-blue); }
+
+    /* ---- Main Grid ---- */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      padding: 0 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+    }
+
+    .card h3 {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 1rem;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 250px;
+    }
+
+    /* ---- Event Feed ---- */
+    .feed-section {
+      padding: 1rem 2rem 2rem;
+    }
+
+    .feed-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .feed-card h3 {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 1rem 1.2rem 0.5rem;
+    }
+
+    .event-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .event-table th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+    }
+
+    .event-table td {
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 250px;
+    }
+
+    .event-table tbody { max-height: 350px; overflow-y: auto; display: block; }
+    .event-table thead, .event-table tbody tr { display: table; width: 100%; table-layout: fixed; }
+
+    .event-table tr:hover { background: rgba(255,255,255,0.02); }
+
+    .verdict-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .verdict-badge.allow { background: rgba(0,184,148,0.15); color: var(--accent-green); }
+    .verdict-badge.deny { background: rgba(225,112,85,0.15); color: var(--accent-red); }
+    .verdict-badge.sandbox { background: rgba(253,203,110,0.15); color: var(--accent-yellow); }
+
+    /* ---- Bottom Section ---- */
+    .bottom-section {
+      padding: 0 2rem 2rem;
+    }
+
+    .bottom-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+    }
+
+    .bottom-card h3 {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 1rem;
+    }
+
+    .blocked-chart-container {
+      position: relative;
+      width: 100%;
+      height: 200px;
+    }
+
+    /* ---- Utilities ---- */
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><span>Ghost</span>Guard</div>
+    <div class="meta">
+      <div><span class="status-dot" id="ws-status"></span>Policy: <span class="value" id="policy-name">loading...</span></div>
+      <div>Uptime: <span class="value" id="uptime">--</span></div>
+      <div>Events: <span class="value" id="total-events">0</span></div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <div class="stat-card total">
+      <div class="label">Total Events</div>
+      <div class="number" id="stat-total">0</div>
+    </div>
+    <div class="stat-card allow">
+      <div class="label">Allowed</div>
+      <div class="number" id="stat-allow">0</div>
+    </div>
+    <div class="stat-card deny">
+      <div class="label">Denied</div>
+      <div class="number" id="stat-deny">0</div>
+    </div>
+    <div class="stat-card sandbox">
+      <div class="label">Sandboxed</div>
+      <div class="number" id="stat-sandbox">0</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="main-grid">
+    <div class="card">
+      <h3>Tool Calls Over Time</h3>
+      <div class="chart-container">
+        <canvas id="timeline-chart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Verdict Distribution</h3>
+      <div class="chart-container">
+        <canvas id="verdict-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Feed -->
+  <div class="feed-section">
+    <div class="feed-card">
+      <h3>Live Event Feed</h3>
+      <table class="event-table">
+        <thead>
+          <tr>
+            <th style="width:15%">Time</th>
+            <th style="width:18%">Tool</th>
+            <th style="width:10%">Verdict</th>
+            <th style="width:8%">Tier</th>
+            <th style="width:35%">Reason</th>
+            <th style="width:8%">Latency</th>
+            <th style="width:6%">Model</th>
+          </tr>
+        </thead>
+        <tbody id="event-feed"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bottom: Blocked Tools -->
+  <div class="bottom-section">
+    <div class="bottom-card">
+      <h3>Top Blocked Tools</h3>
+      <div class="blocked-chart-container">
+        <canvas id="blocked-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- Configuration ---
+  const API_BASE = window.location.pathname.replace(/\/$/, '');
+  const WS_PROTO = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const WS_URL = `${WS_PROTO}//${window.location.host}${API_BASE}/ws/events`;
+  const POLL_INTERVAL = 10000;
+  const MAX_FEED_ROWS = 100;
+
+  // --- Chart defaults ---
+  Chart.defaults.color = '#8888a0';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+  // --- Timeline Chart ---
+  const timelineCtx = document.getElementById('timeline-chart').getContext('2d');
+  const timelineChart = new Chart(timelineCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Events',
+        data: [],
+        borderColor: '#74b9ff',
+        backgroundColor: 'rgba(116,185,255,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } }
+      }
+    }
+  });
+
+  // --- Verdict Donut ---
+  const verdictCtx = document.getElementById('verdict-chart').getContext('2d');
+  const verdictChart = new Chart(verdictCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Allow', 'Deny', 'Sandbox'],
+      datasets: [{
+        data: [0, 0, 0],
+        backgroundColor: ['#00b894', '#e17055', '#fdcb6e'],
+        borderWidth: 0,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } }
+        }
+      }
+    }
+  });
+
+  // --- Blocked Tools Bar Chart ---
+  const blockedCtx = document.getElementById('blocked-chart').getContext('2d');
+  const blockedChart = new Chart(blockedCtx, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Denied',
+        data: [],
+        backgroundColor: 'rgba(225,112,85,0.7)',
+        borderRadius: 4,
+        maxBarThickness: 40,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // --- Health check ---
+  async function fetchHealth() {
+    try {
+      const resp = await fetch(API_BASE.replace('/dashboard', '') + '/health');
+      const data = await resp.json();
+      document.getElementById('policy-name').textContent = data.policy || 'unknown';
+      const secs = Math.floor(data.uptime || 0);
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      document.getElementById('uptime').textContent =
+        h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    } catch (e) { /* ignore */ }
+  }
+
+  // --- Stats ---
+  async function fetchStats() {
+    try {
+      const resp = await fetch(API_BASE + '/api/stats');
+      const data = await resp.json();
+
+      // Cards
+      const bv = data.by_verdict || {};
+      document.getElementById('stat-total').textContent = data.total || 0;
+      document.getElementById('total-events').textContent = data.total || 0;
+      document.getElementById('stat-allow').textContent = bv.allow || 0;
+      document.getElementById('stat-deny').textContent = bv.deny || 0;
+      document.getElementById('stat-sandbox').textContent = bv.sandbox || 0;
+
+      // Verdict donut
+      verdictChart.data.datasets[0].data = [bv.allow || 0, bv.deny || 0, bv.sandbox || 0];
+      verdictChart.update('none');
+
+      // Timeline
+      const timeline = data.events_per_hour || [];
+      timelineChart.data.labels = timeline.map(e => {
+        const parts = (e.hour || '').split('T');
+        return parts.length > 1 ? parts[1].slice(0, 5) : e.hour;
+      });
+      timelineChart.data.datasets[0].data = timeline.map(e => e.count);
+      timelineChart.update('none');
+
+      // Blocked tools
+      const blocked = data.top_blocked_tools || [];
+      blockedChart.data.labels = blocked.map(t => t.tool);
+      blockedChart.data.datasets[0].data = blocked.map(t => t.count);
+      blockedChart.update('none');
+
+    } catch (e) { console.error('Stats fetch error:', e); }
+  }
+
+  // --- Event Feed ---
+  const feedBody = document.getElementById('event-feed');
+
+  function addEventRow(ev, prepend) {
+    const tr = document.createElement('tr');
+    tr.className = 'fade-in';
+
+    const ts = (ev.timestamp || '').includes('T')
+      ? ev.timestamp.split('T')[1].slice(0, 8)
+      : ev.timestamp;
+
+    const verdictClass = (ev.verdict || '').toLowerCase();
+
+    tr.innerHTML = `
+      <td>${ts}</td>
+      <td title="${ev.tool_name || ''}">${ev.tool_name || ''}</td>
+      <td><span class="verdict-badge ${verdictClass}">${(ev.verdict || '').toUpperCase()}</span></td>
+      <td>${ev.tier || ''}</td>
+      <td title="${ev.reason || ''}">${(ev.reason || '').slice(0, 60)}</td>
+      <td>${(ev.latency_ms || 0).toFixed(1)}ms</td>
+      <td title="${ev.upstream_model || ''}">${(ev.upstream_model || '').slice(0, 12)}</td>
+    `;
+
+    if (prepend) {
+      feedBody.insertBefore(tr, feedBody.firstChild);
+      // Limit rows
+      while (feedBody.children.length > MAX_FEED_ROWS) {
+        feedBody.removeChild(feedBody.lastChild);
+      }
+    } else {
+      feedBody.appendChild(tr);
+    }
+  }
+
+  async function fetchEvents() {
+    try {
+      const resp = await fetch(API_BASE + '/api/events?limit=50');
+      const data = await resp.json();
+      feedBody.innerHTML = '';
+      (data.events || []).forEach(ev => addEventRow(ev, false));
+    } catch (e) { console.error('Events fetch error:', e); }
+  }
+
+  // --- WebSocket ---
+  let ws = null;
+  const wsStatus = document.getElementById('ws-status');
+
+  function connectWebSocket() {
+    try {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = function() {
+        wsStatus.classList.remove('disconnected');
+      };
+
+      ws.onmessage = function(e) {
+        try {
+          const ev = JSON.parse(e.data);
+          addEventRow(ev, true);
+
+          // Update stat counts optimistically
+          const totalEl = document.getElementById('stat-total');
+          totalEl.textContent = parseInt(totalEl.textContent || '0') + 1;
+          document.getElementById('total-events').textContent = totalEl.textContent;
+
+          const vKey = 'stat-' + (ev.verdict || '').toLowerCase();
+          const vEl = document.getElementById(vKey);
+          if (vEl) vEl.textContent = parseInt(vEl.textContent || '0') + 1;
+        } catch (err) { /* ignore parse errors */ }
+      };
+
+      ws.onclose = function() {
+        wsStatus.classList.add('disconnected');
+        // Reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = function() {
+        wsStatus.classList.add('disconnected');
+        ws.close();
+      };
+    } catch (e) {
+      wsStatus.classList.add('disconnected');
+      setTimeout(connectWebSocket, 5000);
+    }
+  }
+
+  // Keep WebSocket alive with periodic pings
+  setInterval(function() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send('ping');
+    }
+  }, 30000);
+
+  // --- Init ---
+  fetchHealth();
+  fetchStats();
+  fetchEvents();
+  connectWebSocket();
+
+  // Poll for updates
+  setInterval(fetchHealth, POLL_INTERVAL);
+  setInterval(fetchStats, POLL_INTERVAL);
+
+})();
+</script>
+
+</body>
+</html>

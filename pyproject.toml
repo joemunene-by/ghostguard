@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ghostguard"
+version = "0.1.0"
+description = "AI Agent Security Proxy — intercept, evaluate, and audit LLM tool calls"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{name = "Joe Munene"}]
+keywords = ["ai", "security", "llm", "proxy", "tool-calls", "guardrails"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.20.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "aiosqlite>=0.19.0",
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+docker = ["docker>=6.0.0"]
+llm = ["openai>=1.0.0", "anthropic>=0.20.0"]
+dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "pytest-cov>=4.0.0", "ruff>=0.3.0", "mypy>=1.8.0"]
+all = ["ghostguard[docker,llm,dev]"]
+
+[project.scripts]
+ghostguard = "ghostguard.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/joemunene-by/ghostguard"
+Repository = "https://github.com/joemunene-by/ghostguard"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ghostguard"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true

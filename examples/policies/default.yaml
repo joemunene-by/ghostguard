@@ -1,0 +1,319 @@
+# GhostGuard Default Policy
+# =========================
+# A production-ready baseline for AI agent tool-call security.
+
+version: "1"
+
+metadata:
+  name: "GhostGuard Default Policy"
+  description: "Baseline security policy for LLM agent tool calls"
+  author: "GhostGuard Team"
+
+defaults:
+  action: deny
+  log_level: warning
+
+# ── Rate limits ─────────────────────────────────────────────────────────
+
+rate_limits:
+  global_per_minute: 100
+  per_tool_per_minute: 10
+  burst_window_seconds: 5
+  burst_max: 10
+
+# ── Anomaly detection ──────────────────────────────────────────────────
+
+anomaly:
+  enabled: true
+  window_seconds: 60
+  threshold: 50
+  burst_window_seconds: 5
+  burst_max: 10
+
+# ── Tool rules (evaluated top-to-bottom, first match wins) ─────────────
+
+tools:
+  # --- File reading: allow within /workspace, block sensitive paths ---
+  - name: read_file
+    action: allow
+    reason: "File reading permitted within workspace"
+    constraints:
+      path:
+        pattern: "^/workspace/.*"
+        blocklist:
+          - "/etc/passwd"
+          - "/etc/shadow"
+          - "/etc/sudoers"
+          - "/root/.ssh/id_rsa"
+          - "/root/.ssh/id_ed25519"
+          - "/root/.bash_history"
+          - "/proc/self/environ"
+        blocklist_patterns:
+          - "\\.\\./"
+          - "/\\.env$"
+          - "/\\.git/config$"
+          - "id_rsa"
+          - "id_ed25519"
+          - "\\.pem$"
+          - "\\.key$"
+          - "credentials"
+          - "secrets?\\.ya?ml"
+          - "token"
+        max_length: 4096
+
+  # --- File writing: allow within /workspace, block executables ---
+  - name: write_file
+    action: allow
+    reason: "File writing permitted within workspace"
+    constraints:
+      path:
+        pattern: "^/workspace/.*"
+        blocklist_patterns:
+          - "\\.\\./"
+          - "\\.sh$"
+          - "\\.bash$"
+          - "\\.zsh$"
+          - "\\.exe$"
+          - "\\.bat$"
+          - "\\.cmd$"
+          - "\\.ps1$"
+          - "\\.so$"
+          - "\\.dll$"
+          - "\\.dylib$"
+          - "crontab"
+          - "/\\.bashrc$"
+          - "/\\.profile$"
+          - "/\\.ssh/"
+        max_length: 4096
+      content:
+        max_length: 1048576  # 1 MiB
+
+  # --- Shell execution: always deny ---
+  - name: execute_command
+    action: deny
+    reason: "Shell command execution is not permitted"
+
+  - name: run_shell
+    action: deny
+    reason: "Shell command execution is not permitted"
+
+  - name: bash
+    action: deny
+    reason: "Direct shell access is not permitted"
+
+  # --- Python execution: sandboxed with import restrictions ---
+  - name: run_python
+    action: sandbox
+    reason: "Python execution is sandboxed with restricted imports"
+    constraints:
+      code:
+        blocklist_patterns:
+          - "\\bos\\.system\\b"
+          - "\\bos\\.popen\\b"
+          - "\\bos\\.exec"
+          - "\\bsubprocess\\b"
+          - "\\b__import__\\b"
+          - "\\beval\\s*\\("
+          - "\\bexec\\s*\\("
+          - "\\bcompile\\s*\\("
+          - "\\bgetattr\\s*\\("
+          - "\\bsetattr\\s*\\("
+          - "\\bdelattr\\s*\\("
+          - "\\bglobals\\s*\\("
+          - "\\blocals\\s*\\("
+          - "\\bbreakpoint\\s*\\("
+          - "\\bopen\\s*\\("
+          - "\\bimportlib\\b"
+          - "\\bctypes\\b"
+          - "\\bsocket\\b"
+          - "\\bpickle\\b"
+          - "\\bshelve\\b"
+          - "\\bmarshall?\\b"
+        max_length: 65536
+    sandbox_profile:
+      network: false
+      filesystem: read-only
+      timeout_seconds: 30
+      memory_mb: 256
+
+  # --- Web requests: allow with SSRF protections ---
+  - name: web_request
+    action: allow
+    reason: "HTTP requests permitted to public endpoints"
+    constraints:
+      url:
+        blocklist_patterns:
+          - "^https?://127\\."
+          - "^https?://0\\."
+          - "^https?://localhost"
+          - "^https?://10\\."
+          - "^https?://172\\.(1[6-9]|2[0-9]|3[01])\\."
+          - "^https?://192\\.168\\."
+          - "^https?://169\\.254\\."
+          - "^https?://\\[::1\\]"
+          - "^https?://\\[fc"
+          - "^https?://\\[fd"
+          - "^https?://\\[fe80"
+          - "^https?://metadata\\.google"
+          - "^https?://169\\.254\\.169\\.254"
+          - "^https?://metadata\\.aws"
+          - "\\.internal(:\\d+)?/"
+          - "^file://"
+          - "^gopher://"
+          - "^dict://"
+        max_length: 2048
+
+  - name: fetch_url
+    action: allow
+    reason: "URL fetching permitted to public endpoints"
+    constraints:
+      url:
+        blocklist_patterns:
+          - "^https?://127\\."
+          - "^https?://0\\."
+          - "^https?://localhost"
+          - "^https?://10\\."
+          - "^https?://172\\.(1[6-9]|2[0-9]|3[01])\\."
+          - "^https?://192\\.168\\."
+          - "^https?://169\\.254\\."
+          - "^https?://\\[::1\\]"
+          - "^https?://metadata\\.google"
+          - "^https?://169\\.254\\.169\\.254"
+          - "^file://"
+          - "^gopher://"
+        max_length: 2048
+
+  # --- Communication: rate-limited ---
+  - name: send_email
+    action: allow
+    reason: "Email sending is rate-limited"
+    rate_limit: 5
+    constraints:
+      to:
+        max_length: 320
+      subject:
+        max_length: 998
+      body:
+        max_length: 262144  # 256 KiB
+
+  - name: send_message
+    action: allow
+    reason: "Messaging is rate-limited"
+    rate_limit: 10
+    constraints:
+      content:
+        max_length: 32768
+
+  # --- Database: sandboxed, read-only ---
+  - name: query_database
+    action: sandbox
+    reason: "Database queries run in a read-only sandbox"
+    constraints:
+      query:
+        blocklist_patterns:
+          - "\\bDROP\\b"
+          - "\\bDELETE\\b"
+          - "\\bTRUNCATE\\b"
+          - "\\bALTER\\b"
+          - "\\bCREATE\\b"
+          - "\\bINSERT\\b"
+          - "\\bUPDATE\\b"
+          - "\\bGRANT\\b"
+          - "\\bREVOKE\\b"
+          - "\\bEXEC\\b"
+          - "\\bxp_"
+          - "--"
+          - "\\b;\\s*(DROP|DELETE|INSERT|UPDATE)"
+        max_length: 8192
+    sandbox_profile:
+      network: false
+      filesystem: none
+      timeout_seconds: 15
+      memory_mb: 128
+
+  # --- Catch-all: deny anything not explicitly listed ---
+  - name: "*"
+    action: deny
+    reason: "Unknown tool — denied by default policy"
+
+# ── Global patterns (scanned across ALL tool arguments) ────────────────
+
+patterns:
+  - name: path_traversal
+    pattern: "(\\.\\.[\\/]){1,}"
+    action: deny
+    reason: "Path traversal detected"
+    severity: critical
+
+  - name: null_byte_injection
+    pattern: "%00|\\\\x00|\\\\0"
+    action: deny
+    reason: "Null byte injection detected"
+    severity: critical
+
+  - name: sql_injection_union
+    pattern: "(?i)\\bunion\\b.*\\bselect\\b"
+    action: deny
+    reason: "Potential SQL injection (UNION SELECT)"
+    severity: high
+
+  - name: sql_injection_or_true
+    pattern: "(?i)'\\s*(or|and)\\s+['\"]?\\d['\"]?\\s*=\\s*['\"]?\\d"
+    action: deny
+    reason: "Potential SQL injection (tautology)"
+    severity: high
+
+  - name: sql_injection_comment
+    pattern: "(?i)(--|#|/\\*).*(drop|delete|truncate|alter|update|insert)"
+    action: deny
+    reason: "Potential SQL injection (comment-based)"
+    severity: high
+
+  - name: command_injection_semicolon
+    pattern: ";\\s*(rm|cat|curl|wget|bash|sh|python|perl|ruby|nc|ncat)\\b"
+    action: deny
+    reason: "Potential command injection via semicolon"
+    severity: critical
+
+  - name: command_injection_pipe
+    pattern: "\\|\\s*(rm|cat|curl|wget|bash|sh|python|perl|ruby|nc|ncat)\\b"
+    action: deny
+    reason: "Potential command injection via pipe"
+    severity: critical
+
+  - name: command_injection_backtick
+    pattern: "`[^`]*(rm|cat|curl|wget|bash|sh|python|perl|ruby|nc|ncat)[^`]*`"
+    action: deny
+    reason: "Potential command injection via backtick"
+    severity: critical
+
+  - name: command_injection_subshell
+    pattern: "\\$\\([^)]*\\b(rm|cat|curl|wget|bash|sh|python|perl|ruby|nc|ncat)\\b"
+    action: deny
+    reason: "Potential command injection via subshell"
+    severity: critical
+
+  - name: ssrf_internal
+    pattern: "(?i)(127\\.0\\.0\\.1|localhost|0\\.0\\.0\\.0|\\[::1\\]|169\\.254\\.169\\.254|metadata\\.google)"
+    action: deny
+    reason: "Potential SSRF — internal/metadata address detected"
+    severity: high
+
+  - name: template_injection
+    pattern: "(\\{\\{|\\}\\}|\\{%|%\\}|\\$\\{)"
+    action: deny
+    reason: "Potential template injection"
+    severity: medium
+
+# ── LLM evaluator (Tier 4, disabled by default) ────────────────────────
+
+llm_evaluator:
+  enabled: false
+  model: gpt-4o-mini
+  provider: openai
+  temperature: 0.0
+  max_tokens: 256
+  system_prompt: >
+    You are a security evaluator for an AI agent proxy. Analyse the
+    following tool call and respond with JSON: {"verdict": "allow"|"deny",
+    "reason": "..."}.  Be conservative — deny if unsure.
