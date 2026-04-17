@@ -10,7 +10,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-
 # ── Argument-level constraints ──────────────────────────────────────────
 
 
@@ -125,7 +124,7 @@ class PatternRule(BaseModel):
     pattern: str = Field(..., description="Regex pattern to search for.")
     action: str = Field(default="deny", description="Verdict when the pattern fires.")
     reason: str = Field(default="", description="Human-readable reason for the block.")
-    severity: str = Field(default="high", description="Severity tag (low / medium / high / critical).")
+    severity: str = Field(default="high", description="Severity tag (low/medium/high/critical).")
 
 
 # ── Rate limiting ───────────────────────────────────────────────────────
@@ -134,7 +133,7 @@ class PatternRule(BaseModel):
 class RateLimitConfig(BaseModel):
     """Top-level rate-limit settings."""
 
-    global_per_minute: int = Field(default=100, description="Max tool calls per minute across all tools.")
+    global_per_minute: int = Field(default=100, description="Max tool calls/min across all tools.")
     per_tool_per_minute: int = Field(default=20, description="Max calls per tool per minute.")
     burst_window_seconds: int = Field(default=5, description="Window for burst detection.")
     burst_max: int = Field(default=10, description="Max calls within the burst window.")

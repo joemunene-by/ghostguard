@@ -7,7 +7,6 @@ policy engine, and rewriting the response based on verdicts.
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
 import logging
@@ -103,13 +102,9 @@ class ToolCallInterceptor:
                     choice["finish_reason"] = "stop"
 
     @staticmethod
-    def _add_openai_denial_content(
-        data: dict[str, Any], tool_name: str, reason: str
-    ) -> None:
+    def _add_openai_denial_content(data: dict[str, Any], tool_name: str, reason: str) -> None:
         """Add a content block explaining the denied tool call (OpenAI)."""
-        denial_text = (
-            f"[GhostGuard] Tool call '{tool_name}' was blocked: {reason}"
-        )
+        denial_text = f"[GhostGuard] Tool call '{tool_name}' was blocked: {reason}"
         for choice in data.get("choices", []):
             message = choice.get("message", {})
             existing = message.get("content") or ""
@@ -147,23 +142,15 @@ class ToolCallInterceptor:
             if not (block.get("type") == "tool_use" and block.get("id") == tool_call_id)
         ]
         # Update stop_reason if no tool_use blocks remain
-        has_tool_use = any(
-            b.get("type") == "tool_use" for b in data.get("content", [])
-        )
+        has_tool_use = any(b.get("type") == "tool_use" for b in data.get("content", []))
         if not has_tool_use and data.get("stop_reason") == "tool_use":
             data["stop_reason"] = "end_turn"
 
     @staticmethod
-    def _add_anthropic_denial_content(
-        data: dict[str, Any], tool_name: str, reason: str
-    ) -> None:
+    def _add_anthropic_denial_content(data: dict[str, Any], tool_name: str, reason: str) -> None:
         """Add a text block explaining the denied tool call (Anthropic)."""
-        denial_text = (
-            f"[GhostGuard] Tool call '{tool_name}' was blocked: {reason}"
-        )
-        data.setdefault("content", []).append(
-            {"type": "text", "text": denial_text}
-        )
+        denial_text = f"[GhostGuard] Tool call '{tool_name}' was blocked: {reason}"
+        data.setdefault("content", []).append({"type": "text", "text": denial_text})
 
     # ------------------------------------------------------------------
     # Detection
@@ -263,14 +250,10 @@ class ToolCallInterceptor:
                 )
                 if fmt == ToolCallFormat.OPENAI:
                     self._remove_openai_tool_call(response_data, tc.id)
-                    self._add_openai_denial_content(
-                        response_data, tc.name, decision.reason
-                    )
+                    self._add_openai_denial_content(response_data, tc.name, decision.reason)
                 else:
                     self._remove_anthropic_tool_call(response_data, tc.id)
-                    self._add_anthropic_denial_content(
-                        response_data, tc.name, decision.reason
-                    )
+                    self._add_anthropic_denial_content(response_data, tc.name, decision.reason)
             elif decision.verdict == Verdict.SANDBOX:
                 logger.info(
                     "SANDBOXED tool call '%s' [%s]",
@@ -296,9 +279,7 @@ class ToolCallInterceptor:
     # Streaming support
     # ------------------------------------------------------------------
 
-    def buffer_stream_chunk(
-        self, request_id: str, chunk_data: dict[str, Any]
-    ) -> None:
+    def buffer_stream_chunk(self, request_id: str, chunk_data: dict[str, Any]) -> None:
         """Buffer a single parsed SSE chunk for later evaluation.
 
         During streaming, tool call data arrives incrementally.  This

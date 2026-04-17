@@ -14,11 +14,10 @@ from typing import Any
 
 import pytest
 
-from ghostguard._types import Decision, ToolCall, ToolCallFormat, Verdict
+from ghostguard._types import ToolCallFormat
 from ghostguard.audit.store import AuditStore
 from ghostguard.policy.engine import PolicyEngine
 from ghostguard.proxy.interceptor import ToolCallInterceptor
-
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -35,9 +34,7 @@ async def audit_store(tmp_path: Path) -> AuditStore:
 
 
 @pytest.fixture()
-def interceptor(
-    policy_engine: PolicyEngine, audit_store: AuditStore
-) -> ToolCallInterceptor:
+def interceptor(policy_engine: PolicyEngine, audit_store: AuditStore) -> ToolCallInterceptor:
     """Create an interceptor wired to the real policy engine."""
     return ToolCallInterceptor(policy_engine, audit_store)
 
@@ -67,9 +64,7 @@ def _openai_response(tool_calls: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _openai_tool_call(
-    tc_id: str, name: str, arguments: dict[str, Any]
-) -> dict[str, Any]:
+def _openai_tool_call(tc_id: str, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Build a single OpenAI-format tool call."""
     return {
         "id": tc_id,
@@ -93,9 +88,7 @@ def _anthropic_response(content_blocks: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _anthropic_tool_use(
-    tc_id: str, name: str, input_data: dict[str, Any]
-) -> dict[str, Any]:
+def _anthropic_tool_use(tc_id: str, name: str, input_data: dict[str, Any]) -> dict[str, Any]:
     """Build a single Anthropic tool_use content block."""
     return {
         "type": "tool_use",
@@ -114,18 +107,12 @@ class TestOpenAIFormat:
     """Tests using OpenAI wire format."""
 
     @pytest.mark.asyncio
-    async def test_openai_format_allow(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_openai_format_allow(self, interceptor: ToolCallInterceptor) -> None:
         """A safe read_file tool call should pass through unchanged."""
-        tc = _openai_tool_call(
-            "call_001", "read_file", {"path": "/workspace/main.py"}
-        )
+        tc = _openai_tool_call("call_001", "read_file", {"path": "/workspace/main.py"})
         response = _openai_response([tc])
 
-        result = await interceptor.intercept(
-            response, session_id="s1", request_id="r1"
-        )
+        result = await interceptor.intercept(response, session_id="s1", request_id="r1")
 
         # The tool call should still be present
         tool_calls = result["choices"][0]["message"].get("tool_calls", [])
@@ -135,18 +122,12 @@ class TestOpenAIFormat:
         assert result["choices"][0]["finish_reason"] == "tool_calls"
 
     @pytest.mark.asyncio
-    async def test_openai_format_deny(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_openai_format_deny(self, interceptor: ToolCallInterceptor) -> None:
         """An execute_command tool call should be stripped and denial added."""
-        tc = _openai_tool_call(
-            "call_002", "execute_command", {"command": "rm -rf /"}
-        )
+        tc = _openai_tool_call("call_002", "execute_command", {"command": "rm -rf /"})
         response = _openai_response([tc])
 
-        result = await interceptor.intercept(
-            response, session_id="s2", request_id="r2"
-        )
+        result = await interceptor.intercept(response, session_id="s2", request_id="r2")
 
         # The tool call should be removed
         message = result["choices"][0]["message"]
@@ -161,9 +142,7 @@ class TestOpenAIFormat:
         assert result["choices"][0]["finish_reason"] == "stop"
 
     @pytest.mark.asyncio
-    async def test_openai_no_tool_calls_passthrough(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_openai_no_tool_calls_passthrough(self, interceptor: ToolCallInterceptor) -> None:
         """A response with no tool calls should pass through untouched."""
         response = {
             "id": "chatcmpl-text",
@@ -181,9 +160,7 @@ class TestOpenAIFormat:
             ],
         }
         original = copy.deepcopy(response)
-        result = await interceptor.intercept(
-            response, session_id="s3", request_id="r3"
-        )
+        result = await interceptor.intercept(response, session_id="s3", request_id="r3")
         assert result == original
 
 
@@ -196,50 +173,32 @@ class TestAnthropicFormat:
     """Tests using Anthropic wire format."""
 
     @pytest.mark.asyncio
-    async def test_anthropic_format_allow(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_anthropic_format_allow(self, interceptor: ToolCallInterceptor) -> None:
         """A safe tool_use block should be preserved."""
-        block = _anthropic_tool_use(
-            "tu_001", "read_file", {"path": "/workspace/notes.txt"}
-        )
+        block = _anthropic_tool_use("tu_001", "read_file", {"path": "/workspace/notes.txt"})
         response = _anthropic_response([block])
 
-        result = await interceptor.intercept(
-            response, session_id="s4", request_id="r4"
-        )
+        result = await interceptor.intercept(response, session_id="s4", request_id="r4")
 
-        tool_blocks = [
-            b for b in result["content"] if b.get("type") == "tool_use"
-        ]
+        tool_blocks = [b for b in result["content"] if b.get("type") == "tool_use"]
         assert len(tool_blocks) == 1
         assert tool_blocks[0]["name"] == "read_file"
         assert result["stop_reason"] == "tool_use"
 
     @pytest.mark.asyncio
-    async def test_anthropic_format_deny(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_anthropic_format_deny(self, interceptor: ToolCallInterceptor) -> None:
         """A denied tool_use block should be removed and text block added."""
-        block = _anthropic_tool_use(
-            "tu_002", "execute_command", {"command": "whoami"}
-        )
+        block = _anthropic_tool_use("tu_002", "execute_command", {"command": "whoami"})
         response = _anthropic_response([block])
 
-        result = await interceptor.intercept(
-            response, session_id="s5", request_id="r5"
-        )
+        result = await interceptor.intercept(response, session_id="s5", request_id="r5")
 
         # No tool_use blocks should remain
-        tool_blocks = [
-            b for b in result["content"] if b.get("type") == "tool_use"
-        ]
+        tool_blocks = [b for b in result["content"] if b.get("type") == "tool_use"]
         assert len(tool_blocks) == 0
 
         # A text block with the denial should be present
-        text_blocks = [
-            b for b in result["content"] if b.get("type") == "text"
-        ]
+        text_blocks = [b for b in result["content"] if b.get("type") == "text"]
         assert len(text_blocks) >= 1
         denial_text = text_blocks[-1]["text"]
         assert "[GhostGuard]" in denial_text
@@ -258,21 +217,13 @@ class TestMixedDecisions:
     """Responses with multiple tool calls, some allowed and some denied."""
 
     @pytest.mark.asyncio
-    async def test_openai_mixed_decisions(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_openai_mixed_decisions(self, interceptor: ToolCallInterceptor) -> None:
         """One allowed + one denied tool call in the same response."""
-        safe_tc = _openai_tool_call(
-            "call_safe", "read_file", {"path": "/workspace/data.json"}
-        )
-        bad_tc = _openai_tool_call(
-            "call_bad", "execute_command", {"command": "cat /etc/shadow"}
-        )
+        safe_tc = _openai_tool_call("call_safe", "read_file", {"path": "/workspace/data.json"})
+        bad_tc = _openai_tool_call("call_bad", "execute_command", {"command": "cat /etc/shadow"})
         response = _openai_response([safe_tc, bad_tc])
 
-        result = await interceptor.intercept(
-            response, session_id="s6", request_id="r6"
-        )
+        result = await interceptor.intercept(response, session_id="s6", request_id="r6")
 
         # Only the safe call should survive
         remaining = result["choices"][0]["message"].get("tool_calls", [])
@@ -284,28 +235,16 @@ class TestMixedDecisions:
         assert "execute_command" in content
 
     @pytest.mark.asyncio
-    async def test_anthropic_mixed_decisions(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_anthropic_mixed_decisions(self, interceptor: ToolCallInterceptor) -> None:
         """One allowed + one denied tool_use block in the same response."""
-        safe_block = _anthropic_tool_use(
-            "tu_safe", "read_file", {"path": "/workspace/readme.md"}
-        )
-        bad_block = _anthropic_tool_use(
-            "tu_bad", "run_shell", {"command": "ls"}
-        )
+        safe_block = _anthropic_tool_use("tu_safe", "read_file", {"path": "/workspace/readme.md"})
+        bad_block = _anthropic_tool_use("tu_bad", "run_shell", {"command": "ls"})
         response = _anthropic_response([safe_block, bad_block])
 
-        result = await interceptor.intercept(
-            response, session_id="s7", request_id="r7"
-        )
+        result = await interceptor.intercept(response, session_id="s7", request_id="r7")
 
-        tool_blocks = [
-            b for b in result["content"] if b.get("type") == "tool_use"
-        ]
-        text_blocks = [
-            b for b in result["content"] if b.get("type") == "text"
-        ]
+        tool_blocks = [b for b in result["content"] if b.get("type") == "tool_use"]
+        text_blocks = [b for b in result["content"] if b.get("type") == "text"]
 
         # Safe call kept, bad call removed
         assert len(tool_blocks) == 1
@@ -315,17 +254,13 @@ class TestMixedDecisions:
         assert any("[GhostGuard]" in b["text"] for b in text_blocks)
 
     @pytest.mark.asyncio
-    async def test_all_denied_openai(
-        self, interceptor: ToolCallInterceptor
-    ) -> None:
+    async def test_all_denied_openai(self, interceptor: ToolCallInterceptor) -> None:
         """When all tool calls are denied, finish_reason should be 'stop'."""
         tc1 = _openai_tool_call("c1", "execute_command", {"command": "whoami"})
         tc2 = _openai_tool_call("c2", "run_shell", {"command": "id"})
         response = _openai_response([tc1, tc2])
 
-        result = await interceptor.intercept(
-            response, session_id="s8", request_id="r8"
-        )
+        result = await interceptor.intercept(response, session_id="s8", request_id="r8")
 
         message = result["choices"][0]["message"]
         assert "tool_calls" not in message

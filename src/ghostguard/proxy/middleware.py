@@ -22,9 +22,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     response so clients can correlate logs.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
         # Store on request state for downstream access
         request.state.request_id = request_id
@@ -37,9 +35,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 class TimingMiddleware(BaseHTTPMiddleware):
     """Add an ``X-Response-Time`` header with the elapsed time in ms."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.monotonic()
         response = await call_next(request)
         elapsed_ms = (time.monotonic() - start) * 1000

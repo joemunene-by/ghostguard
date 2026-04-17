@@ -125,9 +125,7 @@ async def openai_proxy(request: Request) -> Response:
                 headers, body_bytes, session_id, request_id, body_json
             )
         else:
-            return await _handle_openai_non_stream(
-                headers, body_bytes, session_id, request_id
-            )
+            return await _handle_openai_non_stream(headers, body_bytes, session_id, request_id)
     except UpstreamError as exc:
         logger.error("Upstream error on OpenAI endpoint: %s", exc)
         return JSONResponse(
@@ -196,15 +194,14 @@ async def _handle_openai_stream(
                         pass
 
         # After stream completes, evaluate buffered tool calls
-        decisions = await _interceptor.flush_decisions(
-            request_id, session_id, model
-        )
+        decisions = await _interceptor.flush_decisions(request_id, session_id, model)
 
         # If any were denied, send a final SSE event
         denied = [d for d in decisions if d.verdict.value == "deny"]
         if denied:
             denial_msg = "\n".join(
-                f"[GhostGuard] Tool '{d.tool_call.name if d.tool_call else '?'}' blocked: {d.reason}"
+                f"[GhostGuard] Tool '{d.tool_call.name if d.tool_call else '?'}'"
+                f" blocked: {d.reason}"
                 for d in denied
             )
             event = {
@@ -258,13 +255,9 @@ async def anthropic_proxy(request: Request) -> Response:
 
     try:
         if streaming:
-            return await _handle_anthropic_stream(
-                headers, body_bytes, session_id, request_id
-            )
+            return await _handle_anthropic_stream(headers, body_bytes, session_id, request_id)
         else:
-            return await _handle_anthropic_non_stream(
-                headers, body_bytes, session_id, request_id
-            )
+            return await _handle_anthropic_non_stream(headers, body_bytes, session_id, request_id)
     except UpstreamError as exc:
         logger.error("Upstream error on Anthropic endpoint: %s", exc)
         return JSONResponse(
@@ -307,9 +300,7 @@ async def _handle_anthropic_stream(
     assert _upstream is not None
 
     async def generate():  # noqa: ANN202
-        async for chunk in _upstream.forward_stream(
-            "POST", "/v1/messages", headers, body_bytes
-        ):
+        async for chunk in _upstream.forward_stream("POST", "/v1/messages", headers, body_bytes):
             yield chunk
 
     return StreamingResponse(

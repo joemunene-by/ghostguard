@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import Any
 
 from fastapi import FastAPI
 
@@ -36,9 +37,7 @@ def _load_policy_engine(policy_path: str) -> Any:
         logger.info("Loaded policy engine from %s", policy_path)
         return engine
     except (ImportError, FileNotFoundError, Exception) as exc:
-        logger.warning(
-            "Could not load PolicyEngine (%s); using permissive stub", exc
-        )
+        logger.warning("Could not load PolicyEngine (%s); using permissive stub", exc)
         return _StubPolicyEngine(policy_path)
 
 

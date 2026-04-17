@@ -101,7 +101,10 @@ class PolicyWatcher:
         try:
             new_policy = load_policy(self._path)
         except Exception:
-            logger.exception("Failed to reload policy from %s; keeping previous version.", self._path)
+            logger.exception(
+                "Failed to reload policy from %s; keeping previous version.",
+                self._path,
+            )
             return False
 
         with self._lock:
