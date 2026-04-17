@@ -14,11 +14,10 @@ from typing import Any
 
 import pytest
 
-from ghostguard._types import Decision, ToolCall, ToolCallFormat, Verdict
+from ghostguard._types import ToolCallFormat
 from ghostguard.audit.store import AuditStore
 from ghostguard.policy.engine import PolicyEngine
 from ghostguard.proxy.interceptor import ToolCallInterceptor
-
 
 # ------------------------------------------------------------------
 # Fixtures

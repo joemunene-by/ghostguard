@@ -18,7 +18,7 @@ from typing import Any
 
 from ghostguard._types import Decision, ToolCall, Verdict
 from ghostguard.policy.anomaly import AnomalyDetector
-from ghostguard.policy.loader import PolicyWatcher, load_policy
+from ghostguard.policy.loader import PolicyWatcher
 from ghostguard.policy.patterns import PatternEvaluator
 from ghostguard.policy.rules import StaticRuleEvaluator
 from ghostguard.policy.schema import PolicyConfig
@@ -39,7 +39,11 @@ class PolicyEngine:
     ``defaults.action``.
     """
 
-    def __init__(self, policy_path: str | Path | None = None, policy: PolicyConfig | None = None) -> None:
+    def __init__(
+        self,
+        policy_path: str | Path | None = None,
+        policy: PolicyConfig | None = None,
+    ) -> None:
         """Create an engine from a YAML file *or* an already-loaded policy.
 
         Parameters

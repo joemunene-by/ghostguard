@@ -204,7 +204,9 @@ async def _handle_openai_stream(
         denied = [d for d in decisions if d.verdict.value == "deny"]
         if denied:
             denial_msg = "\n".join(
-                f"[GhostGuard] Tool '{d.tool_call.name if d.tool_call else '?'}' blocked: {d.reason}"
+                f"[GhostGuard] Tool "
+                f"'{d.tool_call.name if d.tool_call else '?'}' "
+                f"blocked: {d.reason}"
                 for d in denied
             )
             event = {

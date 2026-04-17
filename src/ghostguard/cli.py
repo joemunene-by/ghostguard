@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -239,7 +237,6 @@ def validate(
 
     # Try loading via the real policy engine if available
     try:
-        from ghostguard.policy.engine import PolicyEngine
         from ghostguard.policy.loader import load_policy
 
         cfg = load_policy(path)
@@ -308,16 +305,16 @@ def audit(
     last: int = typer.Option(
         20, "--last", "-n", help="Number of recent events to show."
     ),
-    tool: Optional[str] = typer.Option(
+    tool: str | None = typer.Option(
         None, "--tool", "-t", help="Filter by tool name."
     ),
-    verdict: Optional[str] = typer.Option(
+    verdict: str | None = typer.Option(
         None, "--verdict", "-v", help="Filter by verdict."
     ),
     db_path: str = typer.Option(
         "ghostguard.db", "--db", help="Path to audit database."
     ),
-    export_path: Optional[str] = typer.Option(
+    export_path: str | None = typer.Option(
         None, "--export", help="Export to file (JSONL or CSV)."
     ),
 ) -> None:

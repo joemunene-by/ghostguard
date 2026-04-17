@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-
 CREATE_TABLE_SQL = """\
 CREATE TABLE IF NOT EXISTS audit_events (
     id              TEXT PRIMARY KEY,

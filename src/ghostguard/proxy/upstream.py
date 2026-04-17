@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator
-from typing import Any
 
 import httpx
 
@@ -152,7 +151,10 @@ class UpstreamClient:
             ) as response:
                 if response.status_code >= 400:
                     error_body = await response.aread()
-                    raise UpstreamError(response.status_code, error_body.decode("utf-8", errors="replace"))
+                    raise UpstreamError(
+                        response.status_code,
+                        error_body.decode("utf-8", errors="replace"),
+                    )
 
                 async for chunk in response.aiter_bytes():
                     yield chunk
