@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -108,9 +106,7 @@ def serve(
     dashboard: bool = typer.Option(
         True, "--dashboard/--no-dashboard", help="Enable web dashboard."
     ),
-    reload: bool = typer.Option(
-        False, "--reload", help="Enable auto-reload (dev mode)."
-    ),
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload (dev mode)."),
 ) -> None:
     """Start the GhostGuard security proxy server."""
     import os
@@ -157,9 +153,7 @@ def evaluate(
     policy: str = typer.Option(
         "policy.yaml", "--policy", "-p", help="Path to the YAML policy file."
     ),
-    session_id: str = typer.Option(
-        "cli", "--session", "-s", help="Session identifier."
-    ),
+    session_id: str = typer.Option("cli", "--session", "-s", help="Session identifier."),
 ) -> None:
     """Evaluate a single tool call against the policy and print the decision."""
     from ghostguard._types import Verdict
@@ -179,9 +173,7 @@ def evaluate(
         from ghostguard.policy.engine import PolicyEngine
 
         engine = PolicyEngine.from_yaml(path)
-        decision = engine.evaluate(
-            tool_name=tool_name, arguments=args, session_id=session_id
-        )
+        decision = engine.evaluate(tool_name=tool_name, arguments=args, session_id=session_id)
     except ImportError:
         console.print("[red]PolicyEngine not available. Install the policy module first.[/red]")
         raise typer.Exit(code=1)
@@ -214,9 +206,7 @@ def evaluate(
 
 @app.command()
 def validate(
-    policy_path: str = typer.Argument(
-        "policy.yaml", help="Path to the policy YAML file."
-    ),
+    policy_path: str = typer.Argument("policy.yaml", help="Path to the policy YAML file."),
 ) -> None:
     """Validate a policy YAML file and print a summary."""
     import yaml
@@ -239,7 +229,6 @@ def validate(
 
     # Try loading via the real policy engine if available
     try:
-        from ghostguard.policy.engine import PolicyEngine
         from ghostguard.policy.loader import load_policy
 
         cfg = load_policy(path)
@@ -248,9 +237,7 @@ def validate(
             f"{len(cfg.tools)} tool rules, {len(cfg.patterns)} patterns."
         )
     except ImportError:
-        console.print(
-            "[yellow]PolicyEngine not available; validating YAML structure only[/yellow]"
-        )
+        console.print("[yellow]PolicyEngine not available; validating YAML structure only[/yellow]")
     except Exception as exc:
         console.print(f"[red]Policy engine error:[/red] {exc}")
         raise typer.Exit(code=1)
@@ -305,21 +292,11 @@ def validate(
 
 @app.command()
 def audit(
-    last: int = typer.Option(
-        20, "--last", "-n", help="Number of recent events to show."
-    ),
-    tool: Optional[str] = typer.Option(
-        None, "--tool", "-t", help="Filter by tool name."
-    ),
-    verdict: Optional[str] = typer.Option(
-        None, "--verdict", "-v", help="Filter by verdict."
-    ),
-    db_path: str = typer.Option(
-        "ghostguard.db", "--db", help="Path to audit database."
-    ),
-    export_path: Optional[str] = typer.Option(
-        None, "--export", help="Export to file (JSONL or CSV)."
-    ),
+    last: int = typer.Option(20, "--last", "-n", help="Number of recent events to show."),
+    tool: str | None = typer.Option(None, "--tool", "-t", help="Filter by tool name."),
+    verdict: str | None = typer.Option(None, "--verdict", "-v", help="Filter by verdict."),
+    db_path: str = typer.Option("ghostguard.db", "--db", help="Path to audit database."),
+    export_path: str | None = typer.Option(None, "--export", help="Export to file (JSONL or CSV)."),
 ) -> None:
     """Query and display recent audit events."""
 
@@ -395,20 +372,13 @@ def audit(
 
 @app.command()
 def init(
-    output: str = typer.Option(
-        "policy.yaml", "--output", "-o", help="Output file path."
-    ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Overwrite existing file."
-    ),
+    output: str = typer.Option("policy.yaml", "--output", "-o", help="Output file path."),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing file."),
 ) -> None:
     """Generate a starter policy.yaml in the current directory."""
     path = Path(output)
     if path.exists() and not force:
-        console.print(
-            f"[yellow]File already exists:[/yellow] {path}\n"
-            "Use --force to overwrite."
-        )
+        console.print(f"[yellow]File already exists:[/yellow] {path}\nUse --force to overwrite.")
         raise typer.Exit(code=1)
 
     path.write_text(_STARTER_POLICY)

@@ -6,13 +6,8 @@ defined in conftest.py -- no mocking of core logic.
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from ghostguard._types import ToolCall, Verdict
 from ghostguard.policy.engine import PolicyEngine
-
 
 # ------------------------------------------------------------------
 # Tier 1: Static rule evaluation
@@ -164,7 +159,9 @@ class TestRateLimiting:
                 arguments={"path": "/workspace/file.txt"},
                 session_id=session,
             )
-            if decision.verdict == Verdict.DENY and "rate" in decision.reason.lower() or "burst" in decision.reason.lower():
+            is_rate = "rate" in decision.reason.lower()
+            is_burst = "burst" in decision.reason.lower()
+            if decision.verdict == Verdict.DENY and (is_rate or is_burst):
                 denied = True
                 break
 
@@ -251,7 +248,10 @@ class TestToolCallInterface:
 
     def test_decision_has_latency(self, policy_engine: PolicyEngine) -> None:
         """Every decision should have a non-negative latency_ms."""
-        decision = policy_engine.evaluate(tool_name="read_file", arguments={"path": "/workspace/x.py"})
+        decision = policy_engine.evaluate(
+            tool_name="read_file",
+            arguments={"path": "/workspace/x.py"},
+        )
         assert decision.latency_ms >= 0.0
 
     def test_decision_has_tier(self, policy_engine: PolicyEngine) -> None:

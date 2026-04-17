@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-
 CREATE_TABLE_SQL = """\
 CREATE TABLE IF NOT EXISTS audit_events (
     id              TEXT PRIMARY KEY,
@@ -53,9 +52,7 @@ class AuditEvent:
     upstream_model: str = ""
     policy_version: str = ""
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_row(self) -> tuple[Any, ...]:
         """Convert to a tuple suitable for an INSERT statement."""

@@ -6,7 +6,7 @@ GhostGuard web dashboard.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Query, Request
 
@@ -25,9 +25,9 @@ async def list_events(
     request: Request,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    verdict: Optional[str] = Query(None),
-    tool: Optional[str] = Query(None),
-    session_id: Optional[str] = Query(None),
+    verdict: str | None = Query(None),
+    tool: str | None = Query(None),
+    session_id: str | None = Query(None),
 ) -> dict[str, Any]:
     """Return paginated audit events with optional filters.
 

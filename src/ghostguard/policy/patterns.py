@@ -40,7 +40,12 @@ class PatternEvaluator:
             try:
                 compiled.append((rule, re.compile(rule.pattern, re.IGNORECASE | re.DOTALL)))
             except re.error as exc:
-                logger.warning("Skipping invalid pattern '%s' (%s): %s", rule.name, rule.pattern, exc)
+                logger.warning(
+                    "Skipping invalid pattern '%s' (%s): %s",
+                    rule.name,
+                    rule.pattern,
+                    exc,
+                )
         self._compiled = compiled
 
     # ── Public API ──────────────────────────────────────────────────
@@ -85,7 +90,7 @@ class PatternEvaluator:
                 results.append(current)
             elif isinstance(current, dict):
                 stack.extend(current.values())
-            elif isinstance(current, (list, tuple)):
+            elif isinstance(current, list | tuple):
                 stack.extend(current)
             else:
                 # Coerce scalars so we don't miss e.g. integers that look

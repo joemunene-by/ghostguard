@@ -80,7 +80,8 @@ class AnomalyDetector:
         # ── Global rate check ───────────────────────────────────────
         global_key = (session_id, "__global__")
         global_window = self._get_or_create_rate_window(
-            global_key, policy.rate_limits.global_per_minute if policy.rate_limits else 60,
+            global_key,
+            policy.rate_limits.global_per_minute if policy.rate_limits else 60,
         )
         global_window.record(now)
         if global_window.count(now) > policy.rate_limits.global_per_minute:
@@ -92,7 +93,8 @@ class AnomalyDetector:
         # ── Per-tool rate check ─────────────────────────────────────
         tool_key = (session_id, tool_call.name)
         tool_window = self._get_or_create_rate_window(
-            tool_key, 60,
+            tool_key,
+            60,
         )
         tool_window.record(now)
         if tool_window.count(now) > policy.rate_limits.per_tool_per_minute:
@@ -120,7 +122,8 @@ class AnomalyDetector:
         # ── Global anomaly threshold ────────────────────────────────
         anomaly_key = (session_id, "__anomaly__")
         anomaly_window = self._get_or_create_rate_window(
-            anomaly_key, policy.anomaly.window_seconds,
+            anomaly_key,
+            policy.anomaly.window_seconds,
         )
         anomaly_window.record(now)
         if anomaly_window.count(now) > policy.anomaly.threshold:
@@ -155,9 +158,7 @@ class AnomalyDetector:
             self._rate_windows.clear()
             self._burst_windows.clear()
         else:
-            self._rate_windows = {
-                k: v for k, v in self._rate_windows.items() if k[0] != session_id
-            }
+            self._rate_windows = {k: v for k, v in self._rate_windows.items() if k[0] != session_id}
             self._burst_windows = {
                 k: v for k, v in self._burst_windows.items() if k[0] != session_id
             }

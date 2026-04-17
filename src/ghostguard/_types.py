@@ -67,7 +67,8 @@ class Decision(BaseModel):
     reason: str = ""
     tier: str = Field(
         default="unknown",
-        description="Evaluation tier that produced this decision (static / pattern / anomaly / llm)",
+        description="Evaluation tier that produced this decision"
+        " (static / pattern / anomaly / llm)",
     )
     latency_ms: float = Field(
         default=0.0,

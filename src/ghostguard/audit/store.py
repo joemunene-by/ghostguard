@@ -144,10 +144,7 @@ class AuditStore:
             "WHERE verdict = 'deny' GROUP BY tool_name "
             "ORDER BY cnt DESC LIMIT 10"
         )
-        top_blocked = [
-            {"tool": r["tool_name"], "count": r["cnt"]}
-            for r in await cursor.fetchall()
-        ]
+        top_blocked = [{"tool": r["tool_name"], "count": r["cnt"]} for r in await cursor.fetchall()]
 
         # Events per hour (last 24h)
         cursor = await db.execute(
@@ -157,10 +154,7 @@ class AuditStore:
             "WHERE timestamp >= datetime('now', '-24 hours') "
             "GROUP BY hour ORDER BY hour"
         )
-        events_per_hour = [
-            {"hour": r["hour"], "count": r["cnt"]}
-            for r in await cursor.fetchall()
-        ]
+        events_per_hour = [{"hour": r["hour"], "count": r["cnt"]} for r in await cursor.fetchall()]
 
         return {
             "total": total,
